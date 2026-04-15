@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grob — Parked Workout App</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Georgia, serif;
+      background: #080810;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .app-shell {
+      display: flex;
+      justify-content: center;
+    }
+    .phone {
+      width: 340px;
+      min-height: 620px;
+      background: #0f0f14;
+      border-radius: 32px;
+      border: 1.5px solid #2a2a35;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      color: #f0ede8;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+    }
+    .screen { display: none; flex-direction: column; flex: 1; }
+    .screen.active { display: flex; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 20px 12px;
+    }
+    .app-title { font-size: 18px; font-weight: 700; letter-spacing: 0.03em; color: #f0ede8; }
+    .menu-btn {
+      background: none; border: none; cursor: pointer; padding: 4px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .menu-btn span { display: block; width: 20px; height: 2px; background: #f0ede8; border-radius: 2px; }
+    .back-btn {
+      background: none; border: none; cursor: pointer;
+      color: #a89f97; font-size: 13px; font-family: system-ui, sans-serif;
+      display: flex; align-items: center; gap: 6px; padding: 0;
+    }
+    .back-btn:before { content: '←'; font-size: 16px; }
+
+    .greeting { padding: 8px 20px 24px; }
+    .greeting-label { font-size: 11px; color: #a89f97; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+    .greeting-text { font-size: 22px; font-weight: 400; color: #f0ede8; line-height: 1.3; }
+    .greeting-sub { font-size: 14px; color: #a89f97; margin-top: 4px; }
+
+    .workout-options { padding: 0 20px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    .workout-option {
+      background: #1a1a22; border: 1px solid #2a2a35; border-radius: 14px;
+      padding: 16px 20px; cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .workout-option:hover { border-color: #e84a5f; background: #1f1820; }
+    .workout-option.band-option { border-color: #2a3a2a; background: #121a12; }
+    .workout-option.band-option:hover { border-color: #5aba5a; background: #162016; }
+    .workout-option-label { font-size: 15px; color: #f0ede8; }
+    .workout-option-sub { font-size: 12px; color: #a89f97; margin-top: 2px; font-family: system-ui, sans-serif; }
+    .workout-option-arrow { color: #e84a5f; font-size: 18px; }
+    .band-option .workout-option-arrow { color: #5aba5a; }
+    .band-tag {
+      display: inline-block; background: #1e3a1e; border: 1px solid #3a6a3a;
+      border-radius: 6px; padding: 2px 7px; color: #5aba5a;
+      font-family: system-ui, sans-serif; font-weight: 600; text-transform: uppercase;
+      font-size: 10px; letter-spacing: 0.06em; margin-bottom: 4px;
+    }
+    .home-page { display: none; flex-direction: column; gap: 10px; }
+    .home-page.active { display: flex; }
+    .home-page-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px 0; gap: 10px;
+    }
+    .home-page-btn {
+      background: #1a1a22; border: 1px solid #2a2a35; border-radius: 10px;
+      padding: 8px 16px; font-size: 12px; color: #a89f97;
+      font-family: system-ui, sans-serif; cursor: pointer; transition: all 0.15s;
+    }
+    .home-page-btn:hover { border-color: #e84a5f; color: #f0ede8; }
+    .home-page-btn:disabled { opacity: 0.3; pointer-events: none; }
+    .home-page-dots { display: flex; gap: 6px; align-items: center; }
+    .home-page-dot { width: 6px; height: 6px; border-radius: 50%; background: #2a2a35; transition: background 0.2s; }
+    .home-page-dot.active { background: #e84a5f; }
+
+    .footer-note {
+      padding: 16px 20px 24px; font-size: 11px; color: #5a5560;
+      font-family: system-ui, sans-serif; text-align: center;
+      border-top: 0.5px solid #2a2a35; margin-top: 16px;
+    }
+
+    .menu-overlay {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: #0f0f14; z-index: 10;
+      display: none; flex-direction: column; padding: 20px;
+    }
+    .menu-overlay.open { display: flex; }
+    .menu-section-title {
+      font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+      color: #5a5560; font-family: system-ui, sans-serif; margin: 20px 0 12px;
+    }
+    .points-badge {
+      background: #1a1a22; border: 1px solid #2a2a35; border-radius: 14px;
+      padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .points-val { font-size: 28px; font-weight: 700; color: #e84a5f; }
+    .points-label { font-size: 12px; color: #a89f97; font-family: system-ui, sans-serif; margin-top: 2px; }
+    .menu-link {
+      background: #1a1a22; border: 1px solid #2a2a35; border-radius: 12px;
+      padding: 15px 18px; margin-bottom: 10px; cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 15px; color: #f0ede8; transition: all 0.15s;
+    }
+    .menu-link:hover { border-color: #e84a5f; }
+    .menu-link-arrow { color: #5a5560; }
+
+    .rewards-list { padding: 0 20px; flex: 1; overflow: hidden; }
+    .rewards-page { display: none; flex-direction: column; gap: 0; }
+    .rewards-page.active { display: flex; }
+    .page-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px 20px; gap: 10px;
+    }
+    .page-nav-btn {
+      background: #1a1a22; border: 1px solid #2a2a35; border-radius: 10px;
+      padding: 9px 18px; font-size: 13px; color: #a89f97;
+      font-family: system-ui, sans-serif; cursor: pointer; transition: all 0.15s;
+    }
+    .page-nav-btn:hover { border-color: #e84a5f; color: #f0ede8; }
+    .page-nav-btn:disabled { opacity: 0.3; pointer-events: none; }
+    .page-dots { display: flex; gap: 6px; align-items: center; }
+    .page-dot { width: 6px; height: 6px; border-radius: 50%; background: #2a2a35; transition: background 0.2s; }
+    .page-dot.active { background: #e84a5f; }
+    .streak-card {
+      background: #1a1a22; border: 1px solid #2a2a35; border-radius: 14px;
+      padding: 16px; margin-bottom: 16px;
+    }
+    .streak-label { font-size: 11px; color: #a89f97; font-family: system-ui, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; }
+    .streak-days { font-size: 26px; font-weight: 700; color: #f0ede8; margin: 4px 0 10px; }
+    .streak-bar-bg { height: 4px; background: #2a2a35; border-radius: 4px; overflow: hidden; }
+    .streak-bar-fill { height: 100%; width: 65%; background: #e84a5f; border-radius: 4px; }
+    .reward-item {
+      background: #1a1a22; border: 1px solid #2a2a35; border-radius: 12px;
+      padding: 13px 16px; margin-bottom: 8px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .reward-name { font-size: 14px; color: #f0ede8; }
+    .reward-pts { font-size: 13px; color: #e84a5f; font-family: system-ui, sans-serif; font-weight: 600; }
+    .redeem-btn {
+      margin: 16px 20px 24px; background: #e84a5f; color: #fff;
+      border: none; border-radius: 12px; padding: 14px; font-size: 15px;
+      font-family: system-ui, sans-serif; cursor: pointer; letter-spacing: 0.03em; transition: opacity 0.15s;
+    }
+    .redeem-btn:hover { opacity: 0.88; }
+
+    .session-screen { padding: 0 20px; flex: 1; display: flex; flex-direction: column; }
+    .session-label { font-size: 11px; color: #a89f97; letter-spacing: 0.1em; text-transform: uppercase; font-family: system-ui, sans-serif; margin-bottom: 4px; }
+    .session-name { font-size: 20px; font-weight: 700; color: #f0ede8; margin-bottom: 14px; }
+    .exercise-media {
+      background: #1a1a22; border: 1px solid #2a2a35; border-radius: 16px;
+      height: 160px; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 8px; margin-bottom: 20px;
+    }
+    .exercise-icon { font-size: 36px; }
+    .exercise-desc { font-size: 13px; color: #a89f97; font-family: system-ui, sans-serif; text-align: center; padding: 0 16px; }
+    .timer-display {
+      text-align: center; font-size: 44px; font-weight: 300; color: #f0ede8;
+      letter-spacing: 0.05em; margin-bottom: 8px; font-variant-numeric: tabular-nums;
+    }
+    .timer-sub {
+      font-size: 11px; color: #5a5560; text-align: center;
+      font-family: system-ui, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 20px;
+    }
+    .session-actions { display: flex; gap: 10px; padding-bottom: 24px; margin-top: auto; }
+    .btn-secondary {
+      flex: 1; background: #1a1a22; border: 1px solid #2a2a35; border-radius: 12px;
+      padding: 13px; font-size: 14px; color: #a89f97; font-family: system-ui, sans-serif;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .btn-primary {
+      flex: 2; background: #e84a5f; border: none; border-radius: 12px;
+      padding: 13px; font-size: 14px; color: #fff; font-family: system-ui, sans-serif;
+      cursor: pointer; transition: opacity 0.15s; font-weight: 600;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-secondary:hover { border-color: #a89f97; color: #f0ede8; }
+    .exercise-progress { display: flex; gap: 6px; margin-bottom: 16px; }
+    .ex-dot { height: 3px; flex: 1; border-radius: 3px; background: #2a2a35; }
+    .ex-dot.done { background: #e84a5f; }
+    .ex-dot.current { background: #f0ede8; }
+
+    .leaderboard-list { padding: 0 20px; flex: 1; overflow-y: auto; }
+    .leaderboard-item {
+      background: #1a1a22; border: 1px solid #2a2a35; border-radius: 12px;
+      padding: 14px 16px; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .leaderboard-item.gold { border-color: #c9a84c; background: #1e1a10; }
+    .leaderboard-item.silver { border-color: #8a8f9a; background: #171a1e; }
+    .leaderboard-item.bronze { border-color: #a0673a; background: #1c1510; }
+    .lb-rank { font-size: 18px; font-weight: 700; width: 24px; text-align: center; font-family: system-ui, sans-serif; }
+    .lb-rank.gold { color: #c9a84c; }
+    .lb-rank.silver { color: #8a8f9a; }
+    .lb-rank.bronze { color: #a0673a; }
+    .lb-rank.normal { color: #5a5560; }
+    .lb-avatar {
+      width: 36px; height: 36px; border-radius: 50%; background: #2a2a35;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; font-family: system-ui, sans-serif; color: #a89f97; flex-shrink: 0;
+    }
+    .lb-avatar.gold { background: #2e2510; color: #c9a84c; }
+    .lb-avatar.silver { background: #1e2028; color: #8a8f9a; }
+    .lb-avatar.bronze { background: #251a10; color: #a0673a; }
+    .leaderboard-item.user { border-color: #e84a5f; background: #1f1018; box-shadow: 0 0 0 1px #e84a5f33; }
+    .lb-rank.user-rank { color: #e84a5f; }
+    .lb-avatar.user { background: #e84a5f; color: #fff; }
+    .lb-name.user { color: #f0ede8; font-weight: 700; }
+    .lb-you-tag {
+      font-size: 10px; font-family: system-ui, sans-serif; font-weight: 600;
+      color: #e84a5f; background: #e84a5f22; border: 1px solid #e84a5f55;
+      border-radius: 6px; padding: 2px 6px; letter-spacing: 0.05em; text-transform: uppercase;
+    }
+
+    .done-screen {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 24px 20px; text-align: center;
+    }
+    .done-congrats { font-size: 22px; font-weight: 700; color: #f0ede8; margin-bottom: 6px; }
+    .done-sub { font-size: 14px; color: #a89f97; font-family: system-ui, sans-serif; margin-bottom: 32px; }
+    .points-circle-wrap { position: relative; margin-bottom: 28px; }
+    .points-circle {
+      width: 120px; height: 120px; border: 2px solid #e84a5f; border-radius: 50%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      margin: 0 auto; position: relative; z-index: 1;
+    }
+    .points-circle-pts { font-size: 30px; font-weight: 700; color: #e84a5f; }
+    .points-circle-label { font-size: 12px; color: #a89f97; font-family: system-ui, sans-serif; margin-top: 2px; }
+    .rays { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 160px; height: 160px; pointer-events: none; }
+    .ray {
+      position: absolute; top: 50%; left: 50%; width: 2px; height: 18px;
+      background: #e84a5f; opacity: 0.4; border-radius: 2px; transform-origin: top center;
+    }
+    .done-streak { font-size: 16px; color: #f0ede8; margin-bottom: 6px; }
+    .done-streak-label { font-size: 12px; color: #a89f97; font-family: system-ui, sans-serif; margin-bottom: 28px; }
+    .keep-up-btn {
+      width: 100%; background: #e84a5f; color: #fff; border: none; border-radius: 14px;
+      padding: 15px; font-size: 15px; font-family: system-ui, sans-serif; font-weight: 600;
+      cursor: pointer; letter-spacing: 0.03em; transition: opacity 0.15s;
+    }
+    .keep-up-btn:hover { opacity: 0.88; }
+
+    /* Video upload modal */
+    .video-modal-backdrop {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(8,8,16,0.88); z-index: 20;
+      display: none; flex-direction: column; align-items: center; justify-content: flex-end;
+      padding-bottom: 24px;
+    }
+    .video-modal-backdrop.open { display: flex; }
+    .video-modal {
+      background: #1a1a22; border: 1px solid #2a2a35; border-radius: 20px;
+      padding: 20px; width: calc(100% - 32px); display: flex; flex-direction: column; gap: 12px;
+    }
+    .video-modal-title {
+      font-size: 15px; font-weight: 700; color: #f0ede8; margin-bottom: 2px;
+    }
+    .video-modal-sub {
+      font-size: 12px; color: #a89f97; font-family: system-ui, sans-serif; line-height: 1.5;
+    }
+    .video-drop-zone {
+      border: 1.5px dashed #3a3a48; border-radius: 14px;
+      padding: 20px 12px; display: flex; flex-direction: column; align-items: center;
+      gap: 8px; cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden;
+    }
+    .video-drop-zone:hover { border-color: #e84a5f; background: #1f1820; }
+    .video-drop-zone.has-video { border-color: #5aba5a; background: #121a12; border-style: solid; }
+    .video-drop-icon { font-size: 28px; }
+    .video-drop-label { font-size: 13px; color: #a89f97; font-family: system-ui, sans-serif; text-align: center; }
+    .video-drop-label span { color: #e84a5f; font-weight: 600; }
+    .video-drop-zone.has-video .video-drop-label { color: #5aba5a; }
+    .video-file-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .video-preview {
+      display: none; width: 100%; border-radius: 10px; max-height: 120px;
+      object-fit: cover; background: #0f0f14;
+    }
+    .video-preview.visible { display: block; }
+    .video-filename {
+      font-size: 11px; color: #5aba5a; font-family: system-ui, sans-serif;
+      text-align: center; display: none; word-break: break-all;
+    }
+    .video-filename.visible { display: block; }
+    .video-modal-actions { display: flex; gap: 10px; }
+    .video-skip-btn {
+      flex: 1; background: #1a1a22; border: 1px solid #2a2a35; border-radius: 12px;
+      padding: 12px; font-size: 13px; color: #5a5560; font-family: system-ui, sans-serif;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .video-skip-btn:hover { border-color: #5a5560; color: #a89f97; }
+    .video-confirm-btn {
+      flex: 2; background: #2a2a35; border: none; border-radius: 12px;
+      padding: 12px; font-size: 14px; color: #5a5560; font-family: system-ui, sans-serif;
+      font-weight: 600; cursor: not-allowed; transition: all 0.2s;
+    }
+    .video-confirm-btn.ready { background: #e84a5f; color: #fff; cursor: pointer; }
+    .video-confirm-btn.ready:hover { opacity: 0.88; }
+    .anti-cheat-badge {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 10px; color: #5a5560; font-family: system-ui, sans-serif;
+      letter-spacing: 0.06em; text-transform: uppercase; justify-content: center;
+    }
+    .anti-cheat-badge span { color: #e84a5f; font-size: 12px; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="phone" id="phone">
+
+    <!-- MENU OVERLAY -->
+    <div class="menu-overlay" id="menuOverlay">
+      <div class="topbar" style="padding-top:16px;">
+        <button class="back-btn" onclick="closeMenu()">Menu</button>
+      </div>
+      <div style="padding: 0 20px;">
+        <div class="points-badge">
+          <div>
+            <div class="points-val" id="menuPoints">1,240</div>
+            <div class="points-label">total points</div>
+          </div>
+          <div style="font-size:24px; color:#e84a5f;">★</div>
+        </div>
+        <div class="menu-section-title">Your account</div>
+        <div class="menu-link" onclick="showScreen('rewards'); closeMenu()">
+          Rewards <span class="menu-link-arrow">→</span>
+        </div>
+        <div class="menu-link" onclick="showScreen('leaderboard'); closeMenu()">
+          Leaderboard <span class="menu-link-arrow">→</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOME SCREEN -->
+    <div class="screen active" id="screen-home">
+      <div class="topbar">
+        <div class="app-title">Grob</div>
+        <button class="menu-btn" onclick="openMenu()"><span></span><span></span><span></span></button>
+      </div>
+      <div class="greeting">
+        <div class="greeting-label">Welcome back, Mr. Lim</div>
+        <div class="greeting-text" id="greetingText">Good evening.</div>
+        <div class="greeting-sub">Ready for a workout?</div>
+      </div>
+      <div class="workout-options">
+        <!-- Page 1 -->
+        <div class="home-page active" id="home-page-0">
+          <div class="workout-option" onclick="startSession(2)">
+            <div>
+              <div class="workout-option-label">Quick Session</div>
+              <div class="workout-option-sub">2–3 minutes · 2 exercises</div>
+            </div>
+            <div class="workout-option-arrow">→</div>
+          </div>
+          <div class="workout-option" onclick="startSession(4)">
+            <div>
+              <div class="workout-option-label">Standard Session</div>
+              <div class="workout-option-sub">4–5 minutes · 4 exercises</div>
+            </div>
+            <div class="workout-option-arrow">→</div>
+          </div>
+          <div class="workout-option" onclick="startSession(5)">
+            <div>
+              <div class="workout-option-label">Full Session</div>
+              <div class="workout-option-sub">5+ minutes · 6 exercises</div>
+            </div>
+            <div class="workout-option-arrow">→</div>
+          </div>
+        </div>
+        <!-- Page 2 -->
+        <div class="home-page" id="home-page-1">
+          <div class="workout-option band-option" onclick="startSession('band')">
+            <div>
+              <div class="band-tag">Band</div>
+              <div class="workout-option-label">Resistance Band Session</div>
+              <div class="workout-option-sub">7–8 minutes · 6 exercises · equipment needed</div>
+            </div>
+            <div class="workout-option-arrow">→</div>
+          </div>
+        </div>
+      </div>
+      <div class="home-page-nav">
+        <button class="home-page-btn" id="homePrev" onclick="changeHomePage(-1)" disabled>← Prev</button>
+        <div class="home-page-dots">
+          <div class="home-page-dot active" id="hdot-0"></div>
+          <div class="home-page-dot" id="hdot-1"></div>
+        </div>
+        <button class="home-page-btn" id="homeNext" onclick="changeHomePage(1)">Next →</button>
+      </div>
+      <div style="padding: 16px 20px 0; flex: 1; display: flex; flex-direction: column; justify-content: flex-end;">
+        <div style="border-left: 2px solid #e84a5f; padding: 12px 14px; background: #1a1a22; border-radius: 0 10px 10px 0;">
+          <div style="font-size: 10px; color: #e84a5f; font-family: system-ui, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px;">Daily motivation</div>
+          <div id="quoteText" style="font-size: 13px; color: #c8c4be; font-style: italic; line-height: 1.5;">Loading...</div>
+        </div>
+      </div>
+      <div class="footer-note">⚠ Only available while parked. Always exercise safely.</div>
+    </div>
+
+    <!-- REWARDS SCREEN -->
+    <div class="screen" id="screen-rewards">
+      <div class="topbar">
+        <button class="back-btn" onclick="showScreen('home')">Back</button>
+        <div style="font-size:15px; color:#a89f97; font-family:system-ui,sans-serif;">Rewards</div>
+        <div style="width:40px;"></div>
+      </div>
+      <div class="rewards-list">
+        <div class="streak-card">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+            <div class="streak-label">Current streak</div>
+            <div id="milestoneBadge" style="font-size:10px; font-family:system-ui,sans-serif; font-weight:600; color:#e84a5f; background:#e84a5f22; border:1px solid #e84a5f55; border-radius:6px; padding:2px 7px; letter-spacing:0.05em; text-transform:uppercase;"></div>
+          </div>
+          <div class="streak-days" id="streakDays">7 days</div>
+          <div class="streak-bar-bg"><div class="streak-bar-fill" id="streakBarFill"></div></div>
+          <div style="font-size:11px; color:#5a5560; font-family:system-ui,sans-serif; margin-top:6px;" id="milestoneLabel">Loading...</div>
+        </div>
+        <div style="font-size:11px; color:#5a5560; font-family:system-ui,sans-serif; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px;">Available rewards</div>
+
+        <!-- Page 1 -->
+        <div class="rewards-page active" id="rewards-page-0">
+          <div class="reward-item"><div class="reward-name">Free Coffee</div><div class="reward-pts">500 pts</div></div>
+          <div class="reward-item"><div class="reward-name">Protein Bar Bundle</div><div class="reward-pts">650 pts</div></div>
+          <div class="reward-item"><div class="reward-name">Fuel Discount</div><div class="reward-pts">800 pts</div></div>
+          <div class="reward-item"><div class="reward-name">Car Wash Voucher</div><div class="reward-pts">950 pts</div></div>
+        </div>
+        <!-- Page 2 -->
+        <div class="rewards-page" id="rewards-page-1">
+          <div class="reward-item"><div class="reward-name">Gym Day Pass</div><div class="reward-pts">1,000 pts</div></div>
+          <div class="reward-item"><div class="reward-name">Premium Month</div><div class="reward-pts">1,200 pts</div></div>
+          <div class="reward-item"><div class="reward-name">Sports Water Bottle</div><div class="reward-pts">1,500 pts</div></div>
+          <div class="reward-item"><div class="reward-name">Wellness Store Credit</div><div class="reward-pts">2,000 pts</div></div>
+        </div>
+        <!-- Page 3 -->
+        <div class="rewards-page" id="rewards-page-2">
+          <div class="reward-item">
+            <div>
+              <div class="reward-name">iPhone 17 Pro</div>
+              <div style="font-size:11px; color:#5a5560; font-family:system-ui,sans-serif; margin-top:2px;">Milestone 10 required</div>
+            </div>
+            <div class="reward-pts">10,000 pts</div>
+          </div>
+          <div class="reward-item">
+            <div>
+              <div class="reward-name">iPhone 17 Pro Max</div>
+              <div style="font-size:11px; color:#5a5560; font-family:system-ui,sans-serif; margin-top:2px;">Milestone 12 required</div>
+            </div>
+            <div class="reward-pts">12,000 pts</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-nav">
+        <button class="page-nav-btn" id="rewardsPrev" onclick="changeRewardsPage(-1)" disabled>← Prev</button>
+        <div class="page-dots">
+          <div class="page-dot active" id="rdot-0"></div>
+          <div class="page-dot" id="rdot-1"></div>
+          <div class="page-dot" id="rdot-2"></div>
+        </div>
+        <button class="page-nav-btn" id="rewardsNext" onclick="changeRewardsPage(1)">Next →</button>
+      </div>
+
+      <button class="redeem-btn" onclick="alert('Redeem feature coming soon!')">Redeem Points</button>
+    </div>
+
+    <!-- LEADERBOARD SCREEN -->
+    <div class="screen" id="screen-leaderboard">
+      <div class="topbar">
+        <button class="back-btn" onclick="showScreen('home')">Back</button>
+        <div style="font-size:15px; color:#a89f97; font-family:system-ui,sans-serif;">Leaderboard</div>
+        <div style="width:40px;"></div>
+      </div>
+      <div style="padding: 0 20px 12px; font-size:11px; color:#5a5560; font-family:system-ui,sans-serif; letter-spacing:0.1em; text-transform:uppercase;">This week's top athletes</div>
+      <div class="leaderboard-list" id="leaderboardList"></div>
+    </div>
+
+    <!-- SESSION SCREEN -->
+    <div class="screen" id="screen-session">
+      <div class="topbar">
+        <button class="back-btn" onclick="endSession(true)">End</button>
+        <div style="font-size:13px; color:#a89f97; font-family:system-ui,sans-serif;" id="sessionLabel">Session · 4 mins</div>
+        <div style="width:40px;"></div>
+      </div>
+      <div class="session-screen">
+        <div class="session-label" id="exerciseNum">Exercise 1 of 4</div>
+        <div class="session-name" id="exerciseName">Neck Rolls</div>
+        <div id="bandNotice" style="display:none; background:#1e3a1e; border:1px solid #3a6a3a; border-radius:10px; padding:8px 12px; margin-bottom:10px; font-size:11px; color:#5aba5a; font-family:system-ui,sans-serif; letter-spacing:0.04em;">🟢 Resistance band required for this session</div>
+        <div class="exercise-progress" id="exerciseDots"></div>
+        <div class="exercise-media">
+          <div class="exercise-icon" id="exerciseIcon">🔄</div>
+          <div class="exercise-desc" id="exerciseDesc">Slowly roll your neck in a full circle, 5 times each direction. Keep shoulders relaxed.</div>
+        </div>
+        <div class="timer-display" id="timerDisplay">00:00</div>
+        <div class="timer-sub">elapsed</div>
+        <div class="session-actions">
+          <button class="btn-secondary" id="pauseBtn" onclick="togglePause()">Pause</button>
+          <button class="btn-primary" id="nextBtn" onclick="nextExercise()">Next →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIDEO UPLOAD MODAL -->
+    <div class="video-modal-backdrop" id="videoModal">
+      <div class="video-modal">
+        <div>
+          <div class="video-modal-title">📹 Add exercise video</div>
+          <div class="video-modal-sub" id="videoModalSub">Upload a short clip of yourself completing this exercise. Required to earn points.</div>
+        </div>
+        <div class="video-drop-zone" id="videoDropZone">
+          <input class="video-file-input" type="file" accept="video/*" id="videoFileInput" onchange="handleVideoUpload(this)" />
+          <div class="video-drop-icon" id="videoDropIcon">🎥</div>
+          <video class="video-preview" id="videoPreview" muted playsinline></video>
+          <div class="video-drop-label" id="videoDropLabel">Tap to <span>record or upload</span> a video</div>
+          <div class="video-filename" id="videoFilename"></div>
+        </div>
+        <div class="video-modal-actions">
+          <button class="video-skip-btn" onclick="closeVideoModal(true)">Skip (no points)</button>
+          <button class="video-confirm-btn" id="videoConfirmBtn" onclick="confirmVideo()">Confirm →</button>
+        </div>
+        <div class="anti-cheat-badge"><span>🔒</span> No video = no points · anti-cheat enforced</div>
+      </div>
+    </div>
+
+    <!-- DONE SCREEN -->
+    <div class="screen" id="screen-done">
+      <div class="done-screen">
+        <div class="done-congrats">Great job! 🎉</div>
+        <div class="done-sub">Workout complete!</div>
+        <div class="points-circle-wrap">
+          <div class="rays" id="raysEl"></div>
+          <div class="points-circle">
+            <div class="points-circle-pts" id="earnedPts">+80</div>
+            <div class="points-circle-label">points</div>
+          </div>
+        </div>
+        <div class="done-streak" id="doneStreak">8 Days in a Row!</div>
+        <div class="done-streak-label">Keep the momentum going</div>
+        <button class="keep-up-btn" onclick="showScreen('home')">Keep it up!</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const exercises = {
+    2: [
+      { name: "Neck Rolls", icon: "🔄", desc: "Slowly roll your neck in a full circle, 5 times each direction. Keep shoulders relaxed.", secs: 60 },
+      { name: "Shoulder Stretch", icon: "💪", desc: "Reach one arm across your chest and hold for 20 seconds. Switch sides.", secs: 60 }
+    ],
+    4: [
+      { name: "Neck Rolls", icon: "🔄", desc: "Slowly roll your neck in a full circle, 5 times each direction.", secs: 45 },
+      { name: "Shoulder Stretch", icon: "💪", desc: "Reach one arm across your chest and hold for 20 seconds. Switch sides.", secs: 45 },
+      { name: "Seated Twists", icon: "🌀", desc: "Twist your torso left and right slowly, 10 reps each side. Brace the core.", secs: 60 },
+      { name: "Wrist Circles", icon: "✋", desc: "Extend both arms and rotate wrists in full circles, 10 reps each direction.", secs: 45 }
+    ],
+    5: [
+      { name: "Neck Rolls", icon: "🔄", desc: "Slowly roll your neck in full circles, both directions.", secs: 45 },
+      { name: "Shoulder Stretch", icon: "💪", desc: "Cross-body shoulder stretch, 20 seconds each side.", secs: 50 },
+      { name: "Seated Twists", icon: "🌀", desc: "Torso twists left and right, 10 reps each side.", secs: 60 },
+      { name: "Wrist Circles", icon: "✋", desc: "Full wrist circles, 10 reps each direction.", secs: 40 },
+      { name: "Hip Flexor Stretch", icon: "🦵", desc: "Shift forward in your seat to stretch one hip flexor at a time, 20s each.", secs: 50 },
+      { name: "Deep Breathing", icon: "🌬️", desc: "Inhale deeply for 4 seconds, hold for 4, exhale for 6. Repeat 5 times.", secs: 60 }
+    ],
+    band: [
+      { name: "Band Pull-Apart", icon: "🟢", desc: "Hold band at shoulder width, arms straight. Pull apart horizontally until arms are fully extended. 3 sets of 12 reps.", secs: 70 },
+      { name: "Seated Row", icon: "🚣", desc: "Loop band around the headrest or anchor point. Grab both ends, sit tall, and row your elbows back squeezing shoulder blades. 3 × 12.", secs: 75 },
+      { name: "Overhead Press", icon: "🙌", desc: "Sit on the band and hold both ends at shoulder height. Press upward until arms are extended, then lower slowly. 3 × 10.", secs: 75 },
+      { name: "Seated Leg Extension", icon: "🦵", desc: "Loop the band around the sole of one foot and the opposite thigh. Extend your leg outward to stretch the band fully, then return. 3 × 12 each side.", secs: 65 },
+      { name: "Tricep Overhead Extension", icon: "🔺", desc: "Hold band behind your head with both hands. Extend arms upward to straighten the elbow, then lower. 3 × 10.", secs: 70 },
+      { name: "Seated Thigh Press", icon: "🟢", desc: "Loop the band around both thighs just above the knees. Push your thighs apart horizontally against the band's resistance, hold briefly, then return. 3 × 15. Finish with a full band stretch cool-down.", secs: 80 }
+    ]
+  };
+
+  let currentSession = [], currentExIdx = 0, timerInterval = null;
+  let elapsed = 0, paused = false, totalEarned = 0;
+  let userPoints = 1500, userStreak = 7;
+
+  function setGreeting() {
+    const h = new Date().getHours();
+    const g = h < 12 ? "Good morning." : h < 17 ? "Good afternoon." : "Good evening.";
+    document.getElementById("greetingText").textContent = g;
+  }
+
+  const quotes = [
+    "A body in motion stays in motion. Every stretch counts.",
+    "Your health is an investment, not an expense.",
+    "Small steps every day lead to big changes over time.",
+    "Movement is medicine for the body and mind.",
+    "Even five minutes of exercise is five minutes better than none.",
+    "Take care of your body — it's the only place you have to live.",
+    "Strength doesn't come from what you can do. It comes from overcoming what you thought you couldn't.",
+    "The hardest part is starting. You've already done that.",
+    "Your future self will thank you for what you do today.",
+    "Consistency beats perfection every single time.",
+    "A little progress each day adds up to big results.",
+    "Wellness is not a destination — it's a daily practice."
+  ];
+  let lastQuoteIdx = -1;
+
+  function showQuote() {
+    let idx;
+    do { idx = Math.floor(Math.random() * quotes.length); } while (idx === lastQuoteIdx);
+    lastQuoteIdx = idx;
+    document.getElementById('quoteText').textContent = quotes[idx];
+  }
+
+  const leaderboardData = [
+    { name: 'Atikah', initials: 'AT', points: 2640 },
+    { name: 'Cody',   initials: 'CO', points: 2380 },
+    { name: 'Jia Le', initials: 'JL', points: 2100 },
+    { name: 'Kent',   initials: 'KE', points: 1760 },
+    { name: 'Sheamin',initials: 'SH', points: 1510 },
+  ];
+
+  function renderLeaderboard() {
+    const entries = [
+      ...leaderboardData.map(p => ({ ...p, isUser: false })),
+      { name: 'Lim', initials: 'LM', points: userPoints, isUser: true }
+    ].sort((a, b) => b.points - a.points);
+
+    const rankStyles = ['gold', 'silver', 'bronze'];
+    const list = document.getElementById('leaderboardList');
+    list.innerHTML = entries.map((e, i) => {
+      const rank = i + 1;
+      const rs = rankStyles[i] || 'normal';
+      if (e.isUser) {
+        return `<div class="leaderboard-item user">
+          <div class="lb-rank user-rank">${rank}</div>
+          <div class="lb-avatar user">${e.initials}</div>
+          <div class="lb-name user" style="flex:1;">${e.name}</div>
+          <div class="lb-you-tag">You</div>
+          <div class="lb-pts" style="margin-left:8px;">${e.points.toLocaleString()} pts</div>
+        </div>`;
+      }
+      return `<div class="leaderboard-item ${rs}">
+        <div class="lb-rank ${rs}">${rank}</div>
+        <div class="lb-avatar ${rs}">${e.initials}</div>
+        <div class="lb-name">${e.name}</div>
+        <div class="lb-pts">${e.points.toLocaleString()} pts</div>
+      </div>`;
+    }).join('');
+  }
+
+  function openMenu() { document.getElementById('menuOverlay').classList.add('open'); }
+  function closeMenu() { document.getElementById('menuOverlay').classList.remove('open'); }
+
+  function startSession(mins) {
+    currentSession = exercises[mins] || exercises[4];
+    currentExIdx = 0; elapsed = 0; paused = false; totalEarned = 0;
+    clearInterval(timerInterval);
+    const isBand = mins === 'band';
+    document.getElementById('sessionLabel').textContent = isBand ? 'Session · Resistance Band' : 'Session · ' + mins + ' mins';
+    document.getElementById('bandNotice').style.display = isBand ? 'block' : 'none';
+    loadExercise();
+    showScreen('session');
+    startTimer();
+  }
+
+  function loadExercise() {
+    const ex = currentSession[currentExIdx];
+    const total = currentSession.length;
+    document.getElementById('exerciseNum').textContent = 'Exercise ' + (currentExIdx + 1) + ' of ' + total;
+    document.getElementById('exerciseName').textContent = ex.name;
+    document.getElementById('exerciseIcon').textContent = ex.icon;
+    document.getElementById('exerciseDesc').textContent = ex.desc;
+    elapsed = 0;
+    updateTimerDisplay();
+    updateDots();
+    const isLast = currentExIdx === total - 1;
+    document.getElementById('nextBtn').textContent = isLast ? 'Done ✓' : 'Next →';
+    document.getElementById('pauseBtn').textContent = 'Pause';
+    paused = false;
+  }
+
+  function updateDots() {
+    const dotsEl = document.getElementById('exerciseDots');
+    dotsEl.innerHTML = '';
+    currentSession.forEach((_, i) => {
+      const d = document.createElement('div');
+      d.className = 'ex-dot' + (i < currentExIdx ? ' done' : i === currentExIdx ? ' current' : '');
+      dotsEl.appendChild(d);
+    });
+  }
+
+  function startTimer() {
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      if (!paused) { elapsed++; updateTimerDisplay(); }
+    }, 1000);
+  }
+
+  function updateTimerDisplay() {
+    const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const s = String(elapsed % 60).padStart(2, '0');
+    document.getElementById('timerDisplay').textContent = m + ':' + s;
+  }
+
+  function togglePause() {
+    paused = !paused;
+    document.getElementById('pauseBtn').textContent = paused ? 'Resume' : 'Pause';
+  }
+
+  // Milestone: every 10 days = 1 milestone. Multiplier: milestone 0 = 1x, each milestone adds 0.25x
+  function getMilestone(streak) { return Math.floor(streak / 10); }
+  function getMultiplier(streak) { return 1 + getMilestone(streak) * 0.25; }
+
+  function updateStreakCard() {
+    const streak = userStreak;
+    const milestone = getMilestone(streak);
+    const daysIntoMilestone = streak % 10;
+    const pct = Math.round(daysIntoMilestone / 10 * 100);
+    const multiplier = getMultiplier(streak);
+
+    document.getElementById('streakDays').textContent = streak + ' days';
+    document.getElementById('streakBarFill').style.width = pct + '%';
+
+    const badge = document.getElementById('milestoneBadge');
+    const label = document.getElementById('milestoneLabel');
+
+    if (milestone === 0) {
+      badge.textContent = 'No milestone yet';
+      label.textContent = daysIntoMilestone + '/10 days to Milestone 1 · Base points';
+    } else {
+      badge.textContent = 'Milestone ' + milestone;
+      label.textContent = daysIntoMilestone + '/10 days to next · ×' + multiplier.toFixed(2) + ' pts per exercise';
+    }
+  }
+
+  let pendingAdvance = false; // true = last exercise (end session), false = next exercise
+
+  function nextExercise() {
+    // Pause timer while user is on the modal
+    paused = true;
+    document.getElementById('pauseBtn').textContent = 'Resume';
+
+    const isLast = currentExIdx === currentSession.length - 1;
+    pendingAdvance = isLast;
+
+    const ex = currentSession[currentExIdx];
+    document.getElementById('videoModalSub').textContent =
+      'Upload a short clip of yourself doing "' + ex.name + '". Required to earn points.';
+
+    // Reset modal state
+    document.getElementById('videoDropZone').classList.remove('has-video');
+    document.getElementById('videoDropIcon').style.display = '';
+    document.getElementById('videoPreview').classList.remove('visible');
+    document.getElementById('videoPreview').src = '';
+    document.getElementById('videoDropLabel').innerHTML = 'Tap to <span>record or upload</span> a video';
+    document.getElementById('videoFilename').classList.remove('visible');
+    document.getElementById('videoFilename').textContent = '';
+    document.getElementById('videoConfirmBtn').classList.remove('ready');
+    document.getElementById('videoFileInput').value = '';
+
+    document.getElementById('videoModal').classList.add('open');
+  }
+
+  function handleVideoUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const preview = document.getElementById('videoPreview');
+    preview.src = url;
+    preview.classList.add('visible');
+    document.getElementById('videoDropIcon').style.display = 'none';
+    document.getElementById('videoDropLabel').innerHTML = '✅ Video attached';
+    document.getElementById('videoDropZone').classList.add('has-video');
+    document.getElementById('videoFilename').textContent = file.name;
+    document.getElementById('videoFilename').classList.add('visible');
+    document.getElementById('videoConfirmBtn').classList.add('ready');
+  }
+
+  function confirmVideo() {
+    if (!document.getElementById('videoConfirmBtn').classList.contains('ready')) return;
+    closeVideoModal(false);
+  }
+
+  function closeVideoModal(skipped) {
+    document.getElementById('videoModal').classList.remove('open');
+
+    const ex = currentSession[currentExIdx];
+    const multiplier = getMultiplier(userStreak);
+
+    if (!skipped) {
+      // Full points for providing evidence
+      const base = Math.max(10, Math.floor(elapsed / ex.secs * 20));
+      const pts = Math.round(base * multiplier);
+      totalEarned += pts;
+    }
+    // skipped = 0 pts for this exercise
+
+    paused = false; // resume timer
+
+    if (pendingAdvance) {
+      endSession(false);
+    } else {
+      currentExIdx++;
+      loadExercise();
+    }
+  }
+
+  function endSession(early) {
+    clearInterval(timerInterval);
+    if (early) { showScreen('home'); return; }
+    userStreak++;
+    userPoints += totalEarned;
+    document.getElementById('earnedPts').textContent = '+' + totalEarned;
+    document.getElementById('doneStreak').textContent = userStreak + ' Days in a Row!';
+    document.getElementById('menuPoints').textContent = userPoints.toLocaleString();
+    updateStreakCard();
+    buildRays();
+    showScreen('done');
+  }
+
+  function buildRays() {
+    const raysEl = document.getElementById('raysEl');
+    raysEl.innerHTML = '';
+    for (let i = 0; i < 12; i++) {
+      const r = document.createElement('div');
+      r.className = 'ray';
+      const angle = (i * 30) - 90;
+      const rad = angle * Math.PI / 180;
+      const dist = 52;
+      const x = Math.cos(rad) * dist;
+      const y = Math.sin(rad) * dist;
+      r.style.cssText = 'position:absolute;width:2px;height:16px;background:#e84a5f;opacity:0.4;border-radius:2px;top:50%;left:50%;transform-origin:center bottom;transform:translate(-50%,-100%) translateX(' + x + 'px) translateY(' + y + 'px) rotate(' + angle + 'deg);';
+      raysEl.appendChild(r);
+    }
+  }
+
+  let homePage = 0;
+  const homeTotalPages = 2;
+
+  function changeHomePage(dir) {
+    document.getElementById('home-page-' + homePage).classList.remove('active');
+    document.getElementById('hdot-' + homePage).classList.remove('active');
+    homePage = Math.max(0, Math.min(homeTotalPages - 1, homePage + dir));
+    document.getElementById('home-page-' + homePage).classList.add('active');
+    document.getElementById('hdot-' + homePage).classList.add('active');
+    document.getElementById('homePrev').disabled = homePage === 0;
+    document.getElementById('homeNext').disabled = homePage === homeTotalPages - 1;
+  }
+
+  let rewardsPage = 0;
+  const rewardsTotalPages = 3;
+
+  function changeRewardsPage(dir) {
+    document.getElementById('rewards-page-' + rewardsPage).classList.remove('active');
+    document.getElementById('rdot-' + rewardsPage).classList.remove('active');
+    rewardsPage = Math.max(0, Math.min(rewardsTotalPages - 1, rewardsPage + dir));
+    document.getElementById('rewards-page-' + rewardsPage).classList.add('active');
+    document.getElementById('rdot-' + rewardsPage).classList.add('active');
+    document.getElementById('rewardsPrev').disabled = rewardsPage === 0;
+    document.getElementById('rewardsNext').disabled = rewardsPage === rewardsTotalPages - 1;
+  }
+
+  function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + name).classList.add('active');
+    if (name === 'leaderboard') renderLeaderboard();
+    if (name === 'home') showQuote();
+    if (name === 'rewards') updateStreakCard();
+  }
+
+  setGreeting();
+  showQuote();
+  updateStreakCard();
+</script>
+</body>
+</html>
